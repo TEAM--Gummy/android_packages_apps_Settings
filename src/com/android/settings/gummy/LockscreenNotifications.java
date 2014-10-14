@@ -43,6 +43,8 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
+import net.margaritov.preference.colorpicker.ColorPickerPreference;
+
 public class LockscreenNotifications extends SettingsPreferenceFragment implements Preference.OnPreferenceChangeListener {
 
     private static final String KEY_LOCKSCREEN_NOTIFICATIONS = "lockscreen_notifications";
@@ -61,6 +63,7 @@ public class LockscreenNotifications extends SettingsPreferenceFragment implemen
     private static final String KEY_CATEGORY_GENERAL = "general_catagory";
     private static final String KEY_CATEGORY_LAYOUT = "layout_catagory";
     private static final String KEY_EXCLUDED_APPS = "excluded_apps";
+    private static final String KEY_NOTIFICATION_COLOR = "notification_color";
 
     private CheckBoxPreference mLockscreenNotifications;
     private CheckBoxPreference mPocketMode;
@@ -76,6 +79,7 @@ public class LockscreenNotifications extends SettingsPreferenceFragment implemen
     private CheckBoxPreference mDynamicWidth;
     private SeekBarPreference mOffsetTop;
     private AppMultiSelectListPreference mExcludedAppsPref;
+    private ColorPickerPreference mNotificationColor;
 
     private Context mContext;
 
@@ -162,6 +166,15 @@ public class LockscreenNotifications extends SettingsPreferenceFragment implemen
         mNotificationsHeight.setMaxValue(max);
         mNotificationsHeight.setOnPreferenceChangeListener(this);
         mNotificationsHeight.setEnabled(mLockscreenNotifications.isChecked());
+        mNotificationColor = (ColorPickerPreference) prefs.findPreference(KEY_NOTIFICATION_COLOR);
+        mNotificationColor.setAlphaSliderEnabled(true);
+        int color = Settings.System.getInt(cr,
+                Settings.System.LOCKSCREEN_NOTIFICATIONS_COLOR, 0x55555555);
+        String hexColor = String.format("#%08x", (0xffffffff & color));
+        mNotificationColor.setSummary(hexColor);
+        mNotificationColor.setDefaultValue(color);
+        mNotificationColor.setNewPreviewColor(color);
+        mNotificationColor.setOnPreferenceChangeListener(this);
 
         mExcludedAppsPref = (AppMultiSelectListPreference) findPreference(KEY_EXCLUDED_APPS);
         Set<String> excludedApps = getExcludedApps();
@@ -270,6 +283,14 @@ public class LockscreenNotifications extends SettingsPreferenceFragment implemen
             int max = Math.round((float)displaySize.y * (1f - (mOffsetTop.getProgress() / 100f)) /
                     (float)mContext.getResources().getDimensionPixelSize(R.dimen.notification_row_min_height));
             mNotificationsHeight.setMaxValue(max);
+        } else if (pref == mNotificationColor) {
+            String hex = ColorPickerPreference.convertToARGB(
+                    Integer.valueOf(String.valueOf(value)));
+            pref.setSummary(hex);
+            int intHex = ColorPickerPreference.convertToColorInt(hex);
+            Settings.System.putInt(getActivity().getContentResolver(),
+                    Settings.System.LOCKSCREEN_NOTIFICATIONS_COLOR, intHex);
+            return true;
         } else if (pref == mExcludedAppsPref) {
             storeExcludedApps((Set<String>) value);
             return true;
